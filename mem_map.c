@@ -32,10 +32,34 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/mm.h>
+#include <linux/mmzone.h>
+#include <asm/pgtable.h>
+
+static void prettyprint_struct_page(unsigned long pfn, struct page *in)
+{
+    printk(KERN_INFO "Hello, this is prettyprint_struct_page() for pfn %lx.\n",
+        pfn);
+    printk(KERN_INFO "in->flags = %lx.\n\n", in->flags);
+}
 
 static int __init init_mem_map(void)
 {
+    unsigned long mypfn = 0;
+    struct page *mypage;
+    int node;
+
     printk(KERN_INFO "Hello, this is init_mem_map().\n");
+    printk(KERN_INFO "You have %lu pages to play with!\n",
+           get_num_physpages());
+
+    for (node = 0 ; node < MAX_NUMNODES ; node++)
+        printk(KERN_INFO "node_data[%d]->node_start_pfn = %lu.\n",
+               node, node_data[node]->node_start_pfn);
+
+    mypage = pfn_to_page(node_data[0]->node_start_pfn);
+    prettyprint_struct_page(mypfn, mypage);
+
     return 0;
 }
 
