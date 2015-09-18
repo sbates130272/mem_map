@@ -34,9 +34,13 @@
 #include <linux/init.h>
 #include <linux/mm.h>
 #include <linux/mmzone.h>
+#include <linux/debugfs.h>
 #include <asm/pgtable.h>
 
+#define MODULENAME "mem_map"
 #define NUMPAGES 16
+
+static struct dentry *debugfs;
 
 static void prettyprint_struct_page(unsigned long pfn, struct page *page)
 {
@@ -47,10 +51,30 @@ static void prettyprint_struct_page(unsigned long pfn, struct page *page)
     printk(KERN_INFO "page->_count    = %d.\n", atomic_read(&page->_count));
 }
 
+static int write_pfn(void *data, u64 pfn)
+{
+    struct page *page;
+
+    printk(KERN_INFO "Hello, this is write_pfn() for pfn %lx.\n",
+           (unsigned long)pfn);
+    page = pfn_to_page((unsigned long)pfn);
+    prettyprint_struct_page(pfn, page);
+
+    return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(pfn_fops, NULL, write_pfn, "%llu\n");
+
 static int __init init_mem_map(void)
 {
     struct page *mypage;
     int pfn, nid, nodes = 0;
+
+    debugfs = debugfs_create_dir(MODULENAME, NULL);
+    if (debugfs == NULL )
+        printk(KERN_INFO "Unable to create debugfs directory.");
+    if (debugfs_create_file("pfn", 0222, debugfs, NULL, &pfn_fops) == NULL)
+        printk(KERN_INFO "Unable to create debugfs file pfn.");
 
     printk(KERN_INFO "\n\n********************************************\n");
     printk(KERN_INFO "Hello, this is init_mem_map().\n");
@@ -81,6 +105,7 @@ static int __init init_mem_map(void)
 static void __exit exit_mem_map(void)
 {
     printk(KERN_INFO "Goodbye, this is exit_mem_map().\n");
+    debugfs_remove_recursive(debugfs);
 }
 
 module_init(init_mem_map);
@@ -88,4 +113,4 @@ module_exit(exit_mem_map);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Stephen Bates <stephen.bates@pmcs.com>");
-MODULE_DESCRIPTION("Displays information on system memory in /proc/mem_map");
+MODULE_DESCRIPTION("Displays information on system memory.");
