@@ -44,7 +44,7 @@ static struct dentry *debugfs;
 
 static void prettyprint_struct_page(unsigned long pfn, struct page *page)
 {
-    printk(KERN_INFO "Hello, this is prettyprint_struct_page() for pfn %lx.\n",
+    printk(KERN_INFO "Hello, this is prettyprint_struct_page() for pfn 0x%lx.\n",
         pfn);
     printk(KERN_INFO "page->flags     = %lx.\n", page->flags);
     printk(KERN_INFO "page->_mapcount = %d.\n", atomic_read(&page->_mapcount));
@@ -55,7 +55,7 @@ static int write_pfn(void *data, u64 pfn)
 {
     struct page *page;
 
-    printk(KERN_INFO "Hello, this is write_pfn() for pfn %lx.\n",
+    printk(KERN_INFO "Hello, this is write_pfn() for pfn 0x%lx.\n",
            (unsigned long)pfn);
     page = pfn_to_page((unsigned long)pfn);
     prettyprint_struct_page(pfn, page);
