@@ -46,6 +46,9 @@ static void prettyprint_struct_page(unsigned long pfn, struct page *page)
 {
     printk(KERN_INFO "Hello, this is prettyprint_struct_page() for pfn 0x%lx.\n",
         pfn);
+    printk(KERN_INFO "Looks like pfn 0x%lx resides in memory zone %u.\n",
+	   pfn, pfn_to_nid(pfn));
+
     printk(KERN_INFO "page->flags     = %lx.\n", page->flags);
     printk(KERN_INFO "page->_mapcount = %d.\n", atomic_read(&page->_mapcount));
     printk(KERN_INFO "page->_count    = %d.\n", atomic_read(&page->_count));
@@ -57,13 +60,48 @@ static int write_pfn(void *data, u64 pfn)
 
     printk(KERN_INFO "Hello, this is write_pfn() for pfn 0x%lx.\n",
            (unsigned long)pfn);
+    if ( !pfn_valid((unsigned long)pfn) ){
+	    printk(KERN_INFO "Looks like pfn 0x%lx is not valid.\n",
+		   (unsigned long)pfn);
+	    return 0;
+    }
+
     page = pfn_to_page((unsigned long)pfn);
     prettyprint_struct_page(pfn, page);
 
     return 0;
 }
 
+static int write_free(void *data, u64 pfn)
+{
+    struct page *page;
+    unsigned long i, start, end, free = 0, total = 0;
+
+    printk(KERN_INFO "Hello, this is write_free() for pfn 0x%lx.\n",
+           (unsigned long)pfn);
+    if ( !pfn_valid((unsigned long)pfn) ){
+	    printk(KERN_INFO "Looks like pfn 0x%lx is not valid.\n",
+		   (unsigned long)pfn);
+	    return 0;
+    }
+
+    start = node_start_pfn(pfn_to_nid(pfn));
+    end   = node_end_pfn(pfn_to_nid(pfn));
+
+    for (i=start; i<end ;i++){
+	    total++;
+	    page = pfn_to_page((unsigned long)i);
+	    if ( page->flags & 0x1 )
+		    free++;
+    }
+    printk(KERN_INFO "Looks like %lu pages of %lu are free.\n",
+           free, total);
+
+    return 0;
+}
+
 DEFINE_SIMPLE_ATTRIBUTE(pfn_fops, NULL, write_pfn, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(free_fops, NULL, write_free, "%llu\n");
 
 static int __init init_mem_map(void)
 {
@@ -75,6 +113,8 @@ static int __init init_mem_map(void)
         printk(KERN_INFO "Unable to create debugfs directory.");
     if (debugfs_create_file("pfn", 0222, debugfs, NULL, &pfn_fops) == NULL)
         printk(KERN_INFO "Unable to create debugfs file pfn.");
+    if (debugfs_create_file("free", 0222, debugfs, NULL, &free_fops) == NULL)
+        printk(KERN_INFO "Unable to create debugfs file free.");
 
     printk(KERN_INFO "\n\n********************************************\n");
     printk(KERN_INFO "Hello, this is init_mem_map().\n");
