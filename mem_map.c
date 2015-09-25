@@ -33,8 +33,11 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/mm.h>
+#include <linux/sched.h>
 #include <linux/mmzone.h>
 #include <linux/debugfs.h>
+#include <linux/slab.h>
+#include <linux/miscdevice.h>
 #include <asm/pgtable.h>
 
 #define MODULENAME "mem_map"
@@ -86,10 +89,62 @@ static void print_zones(pg_data_t *pgdat)
     }
 }
 
+static long mm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+    struct page **pages;
+    long ret;
+    struct vm_area_struct *vma = NULL;
+
+    pages = (struct page **) __get_free_page(GFP_KERNEL);
+    if (!pages)
+        return -ENOMEM;
+
+    vma = find_vma(current->mm, arg);
+    if (!vma)
+        return -EIO;
+
+    printk(KERN_INFO "Start: %lx - %ld\n", arg, vma->vm_flags);
+    ret = get_user_pages_unlocked(current, current->mm,
+                                  arg, 1, 0, 1, pages);
+
+    if (ret < 1) {
+        printk(KERN_INFO "GUP error: %ld\n", ret);
+        free_page((unsigned long) pages);
+        return -EFAULT;
+    }
+
+    ret = page_to_pfn(pages[0]) << PAGE_SHIFT;
+    printk(KERN_INFO "Userspace PFN: %08lx\n", ret);
+
+    put_page(pages[0]);
+    free_page((unsigned long) pages);
+
+    return ret;
+}
+
+static const struct file_operations fops = {
+    .owner = THIS_MODULE,
+    .unlocked_ioctl = mm_ioctl,
+    .compat_ioctl = mm_ioctl,
+};
+
+static struct miscdevice miscdev = {
+        .minor = MISC_DYNAMIC_MINOR,
+        .name = "mem_map",
+        .fops = &fops,
+};
+
 static int __init init_mem_map(void)
 {
     struct page *mypage;
     int pfn, nid, nodes = 0;
+    int error;
+
+    error = misc_register(&miscdev);
+    if (error) {
+        pr_err("can't misc_register :(\n");
+        return error;
+    }
 
     debugfs = debugfs_create_dir(MODULENAME, NULL);
     if (debugfs == NULL )
@@ -129,6 +184,7 @@ static void __exit exit_mem_map(void)
 {
     printk(KERN_INFO "Goodbye, this is exit_mem_map().\n");
     debugfs_remove_recursive(debugfs);
+    misc_deregister(&miscdev);
 }
 
 module_init(init_mem_map);
