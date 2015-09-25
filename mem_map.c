@@ -57,8 +57,14 @@ static int write_pfn(void *data, u64 pfn)
 
     printk(KERN_INFO "Hello, this is write_pfn() for pfn 0x%lx.\n",
            (unsigned long)pfn);
-    page = pfn_to_page((unsigned long)pfn);
-    prettyprint_struct_page(pfn, page);
+    if (!pfn_valid(pfn)) {
+        printk(KERN_INFO "PFN is invalid!\n");
+    } else {
+        printk(KERN_INFO "PFN is valid!\n");
+
+        page = pfn_to_page((unsigned long)pfn);
+        prettyprint_struct_page(pfn, page);
+    }
 
     return 0;
 }
