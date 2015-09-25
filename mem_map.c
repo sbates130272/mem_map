@@ -71,6 +71,21 @@ static int write_pfn(void *data, u64 pfn)
 
 DEFINE_SIMPLE_ATTRIBUTE(pfn_fops, NULL, write_pfn, "%llu\n");
 
+static void print_zones(pg_data_t *pgdat)
+{
+    struct zone *zone;
+    struct zone *node_zones = pgdat->node_zones;
+    unsigned long flags;
+
+    for (zone = node_zones; zone - node_zones < MAX_NR_ZONES; ++zone) {
+        spin_lock_irqsave(&zone->lock, flags);
+        printk(KERN_INFO "Zone %s - %d\n", zone->name, populated_zone(zone));
+        printk(KERN_INFO "  %lx  %ld %ld %ld\n", zone->zone_start_pfn,
+               zone->managed_pages, zone->spanned_pages, zone->present_pages);
+        spin_unlock_irqrestore(&zone->lock, flags);
+    }
+}
+
 static int __init init_mem_map(void)
 {
     struct page *mypage;
@@ -95,6 +110,8 @@ static int __init init_mem_map(void)
 		   nid, node_data[nid]->node_present_pages);
 	    printk(KERN_INFO "node_data[%d]->node_spanned_pages = %lu.\n",
 		   nid, node_data[nid]->node_spanned_pages);
+
+        print_zones(node_data[nid]);
     }
     printk(KERN_INFO "You have %d node(s) to play with!\n",
            nodes);
