@@ -30,6 +30,7 @@
 ////////////////////////////////////////////////////////////////////////
 
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/mm.h>
@@ -41,7 +42,6 @@
 #include <asm/pgtable.h>
 
 #define MODULENAME "mem_map"
-#define NUMPAGES 16
 
 static struct dentry *debugfs;
 
@@ -162,14 +162,13 @@ static const struct file_operations fops = {
 
 static struct miscdevice miscdev = {
         .minor = MISC_DYNAMIC_MINOR,
-        .name = "mem_map",
+        .name = MODULENAME,
         .fops = &fops,
 };
 
 static int __init init_mem_map(void)
 {
-    struct page *mypage;
-    int pfn, nid, nodes = 0;
+    int nid, nodes = 0;
     int error;
 
     error = misc_register(&miscdev);
@@ -202,14 +201,8 @@ static int __init init_mem_map(void)
 
         print_zones(node_data[nid]);
     }
-    printk(KERN_INFO "You have %d node(s) to play with!\n",
+    printk(KERN_INFO "You have %d node(s) in your system!\n",
            nodes);
-
-    for (pfn=0; pfn < NUMPAGES ; pfn++){
-	    mypage = pfn_to_page(node_data[0]->node_start_pfn+pfn);
-	    prettyprint_struct_page(node_data[0]->node_start_pfn+pfn,
-				    mypage);
-    }
 
     return 0;
 }
