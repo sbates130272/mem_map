@@ -124,6 +124,7 @@ static void print_zones(pg_data_t *pgdat)
 static long mm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     struct page **pages;
+    struct zone *zone;
     long ret;
     struct vm_area_struct *vma = NULL;
 
@@ -145,13 +146,16 @@ static long mm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         return -EFAULT;
     }
 
-    ret = page_to_pfn(pages[0]) << PAGE_SHIFT;
-    printk(KERN_INFO "Userspace PFN: %08lx\n", ret);
+    ret = page_to_pfn(pages[0]);
+    zone = page_zone(pages[0]);
+
+    printk(KERN_INFO "Userspace PFN: %08lx (ZONE: %s)\n", ret,
+           zone->name);
 
     put_page(pages[0]);
     free_page((unsigned long) pages);
 
-    return ret;
+    return ret << PAGE_SHIFT;
 }
 
 static const struct file_operations fops = {
