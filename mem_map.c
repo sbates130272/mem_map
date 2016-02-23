@@ -155,7 +155,10 @@ static long mm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     put_page(pages[0]);
     free_page((unsigned long) pages);
 
-    return ret << PAGE_SHIFT;
+    if (cmd == 0)
+        return ret << PAGE_SHIFT;
+    else
+        return strcmp(zone->name,"Device") ? 0 : 1;
 }
 
 static const struct file_operations fops = {
