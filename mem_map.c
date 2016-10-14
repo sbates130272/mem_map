@@ -54,7 +54,7 @@ static void prettyprint_struct_page(unsigned long pfn, struct page *page)
 
     printk(KERN_INFO "page->flags     = %lx.\n", page->flags);
     printk(KERN_INFO "page->_mapcount = %d.\n", atomic_read(&page->_mapcount));
-    printk(KERN_INFO "page->_count    = %d.\n", atomic_read(&page->_count));
+    printk(KERN_INFO "page->_refcount    = %d.\n", atomic_read(&page->_refcount));
 }
 
 static int write_pfn(void *data, u64 pfn)
@@ -137,8 +137,8 @@ static long mm_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         return -EIO;
 
     printk(KERN_INFO "Start: %lx - %ld\n", arg, vma->vm_flags);
-    ret = get_user_pages_unlocked(current, current->mm,
-                                  arg, 1, 0, 1, pages);
+    ret = get_user_pages_remote(current, current->mm,
+				arg, 1, 0, 1, pages, NULL);
 
     if (ret < 1) {
         printk(KERN_INFO "GUP error: %ld\n", ret);
